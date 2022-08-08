@@ -1,0 +1,182 @@
+---
+title: "Pre-registration"
+author: "Vinita Vader"
+toc: true
+number-sections: true
+format:
+  html: 
+    code-fold: true
+    html-math-method: katex
+editor: visual
+bibliography: references.bib
+
+---
+
+# Study Title
+
+What is Culture? Analyzing definitions using a text analysis approach
+
+# Background
+The term 'culture' has been invoked as a way to explain several kinds of phenomena that we have encountered at some varying level in our lives. Why do some people love spicy food? Why are arranged marriages preferred in certain parts of the world? Why revealing clothes are looked down upon by some communities? Why it is important to make 'small talk'? Why is it important to share your food in some places whereas in others you would dare not ask to eat from your friend's plate?
+
+The idea of culture has been found to be as hard to define as it is to answer the questions posed above. The meaning of culture is easily grasped when the term is used as a means to explain cause (e.g., he married against his well because obeying the elders is more valued in the culture) or even consequence (e.g., born in a Mali speaking community, they are likely to dress more colorful than someone born in an English speaking Catholic household)^[note that I mention the word "likely" implying probability and not certainty]. However, it is difficult to fully capture all the possibilities (e.g., language, clothing, food, thoughts, behaviors, religion) in one defining statement. Several attempts have been made to define culture. It is important to acknowledge the difficulty that every author of these definitions has dealt with. 
+
+Constructing a definition involves communicating effectively in the most precise way what the target concept means. One might want to consider inclusion and exclusion criteria, for what can be identified as falling within the category of the concept under study and what falls outside of it. To put this in the context with the target concept of culture, there are several events that can be considered as being part of the set 'culture'. Everyday objects, behaviors represented in text, online behaviors all have a cultural element associated with them. How could we then parse out the cultural from the non-cultural elements of the phenomena? This is a very difficult question to answer. 
+
+All of the discussion so far aids in illustrating the frustrations and dilemmas the scholars have encountered in composing a functional definition of culture that has the ability to gather consensus. Disputes surrounding the ideation of 'culture' have streamed since the early eighteenth century with no signs of ceasing or attaining a level of harmony amongst scholars in this area of work who range from anthropologists, psychologists, sociologists, economists and political scientists. The only grounds for agreement lie in the premise that there is no complete agreement upon the understanding of culture except everyone, including those not committed to thinking about culture 24*7,can demonstrate a conscious awareness of the existence of culture. 
+
+One way of accessing the themes that underlie our knowledge about culture could be to carrying out an expert analysis of all the definitions of culture. @kroeber1952culture reviewed more than a hundred definitions of culture and categorized them into six main sections - Descriptive, Historical, Normative, Psychological, Structural, and Genetic. This process involved content analysis by experts who engaged with the definitions in a detailed and organized manner to come up with a systematic categorization. 
+
+Several definitions of culture have been proposed after this review. There are currently over 200 definitions of culture that have been proposed only in the English language. In order to unpack the conceptualization of culture, it is necessary to take a close look at the definitions.This will help us in extrapolating the main themes and notions about culture that have existed over the vast spans of time wherein this has been an important target of scholarly pursuit.  
+
+Unlike Kroeber and Kluckhohn, we have advanced quantitative methods like topic modeling to gain a better understanding of the workings of these large numbers of definitions. Topic modeling intends to uncover themes in text data and is based on the workings of the unsupervised machine learning algorithm called the Principal Component Analysis.
+
+# Procedure
+Definitions of culture will the collected from all sources that fulfill the following criteria:
+1. They should be published by authors in academic journals or books. No fictional or narrative accounts will be utilized. 
+2. They should be trying to define culture in the most direct manner. For example, the author should be starting off with a sentence stem such as "Culture is defined as..." or there is an implication of this stem in the writing. 
+
+
+# Analysis
+1. The data will be subjected to cleaning wherein information about the authors and the year of publication are neatly separated from the text. 
+2. The text is cleaned for any illegible or misspelled words. 
+3. Any other type of manipulation or cleaning of the data is carried out that is relevant to the study. 
+4. Text analysis of the data will involve applying Topic modelling methods. Different topic modeling methods (for e.g., Latent Dirichlet Analysis (LDA), Meaning extraction method will the used). 
+5. The software programs that will be used for the study include R and LIWC-22.
+
+# Code
+
+## Sample code for LDA
+
+### Library set up
+```{r}
+#| eval: false
+
+library(tidyverse) 
+library(topicmodels)
+library(tidytext)
+library(tm)
+library(forcats)
+```
+
+### Data importing and Cleaning
+- The focus of data cleaning is on retaining all the relevant words for analyzing the main themes in the text. 
+- Word stemming - This step involves replacing different forms or spellings of a word with one word to avoid repetitions. This may lead to reduction in the total number of words and therefore dimensions to be considered in the data. 
+```{r}
+#| eval: false
+
+#import data 
+def_data <- rio::import("references/theory/CultureDefined.xlsx", sheet = "all_def") %>% 
+  janitor::clean_names()
+
+# Remove  these words from the text
+remove_words <- c("culture", "cultures", "culture11", "cultural", "etc", "may", "can", "consists", "given", "one", "term", "results", "refers", "well", "includes", "within", "non", "rather", "also", "called", "said", "whose", "word", "every", "i.e", "now", "thus", "be", "defined", "define", "means", "mean", "call", "certain", "tylor", "another's")
+
+# Clean up the data 
+tidy_def <- def_data %>% 
+  #build columns with author and year 
+  mutate(author = stringr::str_extract(citation, "(?<=\\s)[^,]*(?=,)"),
+         year = stringr::str_extract(citation, "(?<=,)[^.]+(?=\\:)")) %>% 
+  # correct for words in the text
+  mutate(definition = str_replace_all(definition, c("men"="man","human" = "man", "human's" = "man", "men's" = "man", "man's" = "man"))) %>%
+  mutate(year = parse_number(year)) %>% 
+  # tokenize for words 
+    unnest_tokens(word,definition) %>% 
+  #remove stop words
+    anti_join(get_stopwords()) %>%  #%>% View 
+  #filter out words like culture [one being defined]
+    filter(!word %in% remove_words) %>% 
+  #stemming the data - not sure if I will retain this in the end
+  #mutate(stem = hunspell::hunspell_stem(word)) %>%
+  mutate(stem = SnowballC::wordStem(word)) %>%
+  unnest(stem)
+
+```
+
+### Descriptive analysis
+This section will focus on uncovering the descriptive statistics with the following guidelines
+ - frequency of words used in the definitions
+ - proportion of definitions that contain the most frequent words
+```{r}
+#| eval: false
+
+#Descriptive statistics of words 
+tidy_def %>% 
+  count(word, stem, sort = TRUE)
+
+#count stems and words [cab I do this with summarise??]
+tot_stems <- tidy_def %>% 
+  count(stem, sort = TRUE) 
+tot_words <- tidy_def%>%
+  count(word, sort = TRUE)
+
+tibble(tot_stems, tot_words)
+
+```
+
+
+```{r}
+#| eval: false
+
+#Pick between any of the following options
+#1. setting up WORDS in dimensions
+def_sparse <-
+  tidy_def %>%
+  count(author, word) %>%
+  cast_sparse(author, word, n)
+
+#2. setting up STEMS in dimensions
+def_sparse <-
+  tidy_def %>%
+  count(author, stem) %>%
+  cast_sparse(author, stem, n)
+
+dim(def_sparse)
+```
+
+### Topic modelling
+```{r}
+#| eval: false
+
+set.seed(123) 
+#decide on K = number of themes
+topic_model <- stm(def_sparse, K = 8, verbose = FALSE)
+
+summary(topic_model)
+
+word_topics <- tidy(topic_model, matrix = "beta")
+word_topics
+```
+
+Plot the different themes in the data
+```{r}
+#| eval: false
+
+word_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>%
+  ungroup() %>%
+  mutate(topic = paste("Topic", topic)) %>%
+  ggplot(aes(beta, reorder_within(term, beta, topic), fill = topic)) +
+  geom_col(show.legend = FALSE, alpha = .8) +
+  facet_wrap(vars(topic), scales = "free_y") +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_reordered() +
+  labs(x = expression(beta), y = NULL) +
+  theme_minimal()
+
+```
+
+```{r}
+#| echo: false
+#| eval: false
+hunspell::hunspell_stem("conduct")
+hunspell::hunspell_stem("product")
+SnowballC::wordStem("generation")
+SnowballC::wordStem("general")
+#hunspell_stem("adjustment")
+```
+
+
+::: {#refs}
+:::
